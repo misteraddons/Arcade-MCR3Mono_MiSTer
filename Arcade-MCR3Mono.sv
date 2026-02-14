@@ -217,6 +217,7 @@ localparam CONF_STR = {
 	"h4O6,Fire 1P,4Way,Fly+Fire;",
 	"h4O7,Fire 2P,4Way,Fly+Fire;",
 	"h4O8,Fire 3P,4Way,Fly+Fire;",
+	"h4O9,Fire Mode,Buttons,Second Joystick;",
 	"h4-;",
 	"DIP;",
 	"-;",
@@ -385,6 +386,13 @@ wire m_fire4b  = joy4[5];
 wire m_spccw4  = joy4[30];
 wire m_spcw4   = joy4[31];
 
+// Guard game-specific mode bits so stale status values cannot leak behavior.
+wire sarge_mode2  = mod_sarge && status[6];
+wire sg_fire_mode = mod_stargrds && status[9];
+wire sg_fire1_4w  = mod_stargrds && status[6];
+wire sg_fire2_4w  = mod_stargrds && status[7];
+wire sg_fire3_4w  = mod_stargrds && status[8];
+
 reg       sg; // Sounds Good board
 reg [7:0] input0;
 reg [7:0] input1;
@@ -441,10 +449,13 @@ always @(*) begin
 	end
 	else if (mod_stargrds) begin
 		// normal controls for 3 players
+		// Second Joystick mode (status[9]): P1 fire from P2 joystick directions
 		input0 = ~{sw[1][0], 2'b00, sndstat[0], output5[1] ? m_start3 : m_start2, m_start1, output5[1] ? m_coin3 : m_coin2, m_coin1};
-		input1 = ~{m_right1, m_left1, m_down1, m_up1, status[6] ? ((m_fire1a|m_fire1d|m_fire1b|m_fire1c) ? {m_right1, m_left1, m_down1, m_up1} : 4'b0000) : {m_fire1a, m_fire1d, m_fire1b, m_fire1c}};
-		input2 = ~{m_right2, m_left2, m_down2, m_up2, status[7] ? ((m_fire2a|m_fire2d|m_fire2b|m_fire2c) ? {m_right2, m_left2, m_down2, m_up2} : 4'b0000) : {m_fire2a, m_fire2d, m_fire2b, m_fire2c}};
-		input4 = ~{m_right3, m_left3, m_down3, m_up3, status[8] ? ((m_fire3a|m_fire3d|m_fire3b|m_fire3c) ? {m_right3, m_left3, m_down3, m_up3} : 4'b0000) : {m_fire3a, m_fire3d, m_fire3b, m_fire3c}};
+		input1 = ~{m_right1, m_left1, m_down1, m_up1,
+			sg_fire_mode ? {m_right2, m_left2, m_down2, m_up2} :
+			               (sg_fire1_4w ? ((m_fire1a|m_fire1d|m_fire1b|m_fire1c) ? {m_right1, m_left1, m_down1, m_up1} : 4'b0000) : {m_fire1a, m_fire1d, m_fire1b, m_fire1c})};
+		input2 = ~{m_right2, m_left2, m_down2, m_up2, sg_fire2_4w ? ((m_fire2a|m_fire2d|m_fire2b|m_fire2c) ? {m_right2, m_left2, m_down2, m_up2} : 4'b0000) : {m_fire2a, m_fire2d, m_fire2b, m_fire2c}};
+		input4 = ~{m_right3, m_left3, m_down3, m_up3, sg_fire3_4w ? ((m_fire3a|m_fire3d|m_fire3b|m_fire3c) ? {m_right3, m_left3, m_down3, m_up3} : 4'b0000) : {m_fire3a, m_fire3d, m_fire3b, m_fire3c}};
 	end
 end
 
@@ -639,7 +650,7 @@ assign AUDIO_S = 0;
 wire s_lu1, s_ld1, s_ru1, s_rd1, s_f1a, s_f1b;
 twosticks twosticks1
 (
-	status[6],
+	sarge_mode2,
 	m_left1,  m_right1, m_up1, m_down1,
 	m_fire1b, m_fire1c,
 	s_lu1, s_ld1, s_ru1, s_rd1
@@ -648,7 +659,7 @@ twosticks twosticks1
 wire s_lu2, s_ld2, s_ru2, s_rd2, s_f2a, s_f2b;
 twosticks twosticks2
 (
-	status[6],
+	sarge_mode2,
 	m_left2, m_right2, m_up2, m_down2,
 	m_fire2b, m_fire2c,
 	s_lu2, s_ld2, s_ru2, s_rd2
